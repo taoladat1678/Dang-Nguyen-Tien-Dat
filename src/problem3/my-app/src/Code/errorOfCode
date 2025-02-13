@@ -1,0 +1,168 @@
+1. Logic error in the sortedBalances filter (undefined lhsPriority)
+Issue:
+In the useMemo hook, the lhsPriority is used without being defined, causing an error and incorrect filtering logic.
+
+Original Code:
+tsx
+Sao chép
+Chỉnh sửa
+const sortedBalances = useMemo(() => {
+  return balances.filter((balance: WalletBalance) => {
+    const balancePriority = getPriority(balance.blockchain);
+    if (lhsPriority > -99) {  // ❌ lhsPriority is not defined!
+      if (balance.amount <= 0) {
+        return true;
+      }
+    }
+    return false
+  })
+  .sort((lhs: WalletBalance, rhs: WalletBalance) => {
+    const leftPriority = getPriority(lhs.blockchain);
+    const rightPriority = getPriority(rhs.blockchain);
+    if (leftPriority > rightPriority) {
+      return -1;
+    } else if (rightPriority > leftPriority) {
+      return 1;
+    }
+  });
+}, [balances, prices]);
+Solution:
+Replace lhsPriority with balancePriority and eliminate the balance.amount check before filtering by priority.
+
+Fixed Code:
+tsx
+Sao chép
+Chỉnh sửa
+const sortedBalances = useMemo(() => {
+  return balances
+    .filter((balance: WalletBalance) => balance.amount > 0)  // Fix: filter out balances with amount <= 0
+    .sort((lhs: WalletBalance, rhs: WalletBalance) => {
+      const leftPriority = getPriority(lhs.blockchain);
+      const rightPriority = getPriority(rhs.blockchain);
+      return rightPriority - leftPriority;  // Sort based on blockchain priority
+    });
+}, [balances, prices]);
+2. Using any in the getPriority function
+Issue:
+The getPriority function uses any as the type for the blockchain parameter, which reduces type safety and can cause runtime errors.
+
+Original Code:
+tsx
+Sao chép
+Chỉnh sửa
+const getPriority = (blockchain: any): number => { ... }
+Solution:
+Replace any with a more specific type, such as string, because the blockchain names are strings.
+
+Fixed Code:
+tsx
+Sao chép
+Chỉnh sửa
+const getPriority = (blockchain: string): number => {  // Fix: change `any` to `string`
+  const priorities: Record<string, number> = {
+    Osmosis: 100,
+    Ethereum: 50,
+    Arbitrum: 30,
+    Zilliqa: 20,
+    Neo: 20,
+  };
+  return priorities[blockchain] ?? -99;  // Return -99 if blockchain is not found
+};
+3. Recalculating formattedBalances on every render
+Issue:
+The formattedBalances are recalculated every time the component re-renders, which is inefficient. Memoization should be used to prevent unnecessary recalculation.
+
+Original Code:
+tsx
+Sao chép
+Chỉnh sửa
+const formattedBalances = sortedBalances.map((balance: WalletBalance) => {
+  return {
+    ...balance,
+    formatted: balance.amount.toFixed()
+  }
+})
+Solution:
+Wrap the calculation of formattedBalances inside a useMemo hook so that it is only recalculated when sortedBalances changes.
+
+Fixed Code:
+tsx
+Sao chép
+Chỉnh sửa
+const formattedBalances = useMemo(() => {
+  return sortedBalances.map((balance: WalletBalance) => ({
+    ...balance,
+    formatted: balance.amount.toFixed(2),  // Format with 2 decimal places
+  }));
+}, [sortedBalances]);  // Recalculate only when `sortedBalances` changes
+4. Redundant calculation of usdValue on every render
+Issue:
+The usdValue is recalculated on each render, which is inefficient. It should only be recalculated when necessary, like when prices or formattedBalances change.
+
+Original Code:
+tsx
+Sao chép
+Chỉnh sửa
+const usdValue = prices[balance.currency] * balance.amount;
+Solution:
+Use useMemo to calculate usdValue only when formattedBalances or prices change, avoiding unnecessary recalculations.
+
+Fixed Code:
+tsx
+Sao chép
+Chỉnh sửa
+const formattedBalances = useMemo(() => {
+  return sortedBalances.map((balance: WalletBalance) => ({
+    ...balance,
+    formatted: balance.amount.toFixed(2),
+    usdValue: (prices[balance.currency] || 0) * balance.amount,  // Calculate usdValue once
+  }));
+}, [sortedBalances, prices]);  // Recalculate only when `sortedBalances` or `prices` change
+5. Using index as a key in .map()
+Issue:
+Using index as the key in .map() can lead to issues in React when items in the list change order or are updated. React relies on unique and stable keys to optimize rendering.
+
+Original Code:
+tsx
+Sao chép
+Chỉnh sửa
+{formattedBalances.map((balance: FormattedWalletBalance, index: number) => (
+  <WalletRow key={index} ... />
+))}
+Solution:
+Use a more unique identifier, such as balance.currency, as the key. This ensures stability and correctness when rendering items.
+
+Fixed Code:
+tsx
+Sao chép
+Chỉnh sửa
+{formattedBalances.map((balance: FormattedWalletBalance) => (
+  <WalletRow key={balance.currency}  // Fix: Use `currency` as the key instead of `index`
+    amount={balance.amount}
+    usdValue={balance.usdValue}
+    formattedAmount={balance.formatted}
+  />
+))}
+6. Potential performance issue due to sorting in useMemo
+Issue:
+Sorting within useMemo causes performance issues when the list of balances is large. Sorting should be done carefully to avoid unnecessary re-renders.
+
+Solution:
+Ensure that sorting is only triggered when necessary. In this case, the sorting is already memoized, but developers should be mindful of the performance when working with large data sets.
+
+7. Lack of type checking for prices
+Issue:
+The prices object is used directly without any type checking or structure validation. This can lead to potential issues, especially when accessing properties dynamically.
+
+Solution:
+Type prices appropriately to ensure it contains the expected structure.
+
+Fixed Code:
+tsx
+Sao chép
+Chỉnh sửa
+interface Prices {
+  [currency: string]: number;  // Type `prices` to be an object with string keys and number values
+}
+
+const prices: Prices = usePrices();  // Ensure `prices` is typed correctly
