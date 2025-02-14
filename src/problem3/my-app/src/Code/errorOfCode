@@ -3,9 +3,9 @@ Issue:
 In the useMemo hook, the lhsPriority is used without being defined, causing an error and incorrect filtering logic.
 
 Original Code:
-tsx
-Sao chép
-Chỉnh sửa
+
+ 
+ 
 const sortedBalances = useMemo(() => {
   return balances.filter((balance: WalletBalance) => {
     const balancePriority = getPriority(balance.blockchain);
@@ -30,9 +30,9 @@ Solution:
 Replace lhsPriority with balancePriority and eliminate the balance.amount check before filtering by priority.
 
 Fixed Code:
-tsx
-Sao chép
-Chỉnh sửa
+ 
+ 
+ 
 const sortedBalances = useMemo(() => {
   return balances
     .filter((balance: WalletBalance) => balance.amount > 0)  // Fix: filter out balances with amount <= 0
@@ -47,17 +47,17 @@ Issue:
 The getPriority function uses any as the type for the blockchain parameter, which reduces type safety and can cause runtime errors.
 
 Original Code:
-tsx
-Sao chép
-Chỉnh sửa
+ 
+ 
+ 
 const getPriority = (blockchain: any): number => { ... }
 Solution:
 Replace any with a more specific type, such as string, because the blockchain names are strings.
 
 Fixed Code:
-tsx
-Sao chép
-Chỉnh sửa
+ 
+ 
+ 
 const getPriority = (blockchain: string): number => {  // Fix: change `any` to `string`
   const priorities: Record<string, number> = {
     Osmosis: 100,
@@ -73,9 +73,9 @@ Issue:
 The formattedBalances are recalculated every time the component re-renders, which is inefficient. Memoization should be used to prevent unnecessary recalculation.
 
 Original Code:
-tsx
-Sao chép
-Chỉnh sửa
+ 
+ 
+ 
 const formattedBalances = sortedBalances.map((balance: WalletBalance) => {
   return {
     ...balance,
@@ -86,9 +86,9 @@ Solution:
 Wrap the calculation of formattedBalances inside a useMemo hook so that it is only recalculated when sortedBalances changes.
 
 Fixed Code:
-tsx
-Sao chép
-Chỉnh sửa
+ 
+ 
+ 
 const formattedBalances = useMemo(() => {
   return sortedBalances.map((balance: WalletBalance) => ({
     ...balance,
@@ -100,17 +100,17 @@ Issue:
 The usdValue is recalculated on each render, which is inefficient. It should only be recalculated when necessary, like when prices or formattedBalances change.
 
 Original Code:
-tsx
-Sao chép
-Chỉnh sửa
+ 
+ 
+ 
 const usdValue = prices[balance.currency] * balance.amount;
 Solution:
 Use useMemo to calculate usdValue only when formattedBalances or prices change, avoiding unnecessary recalculations.
 
 Fixed Code:
-tsx
-Sao chép
-Chỉnh sửa
+ 
+ 
+ 
 const formattedBalances = useMemo(() => {
   return sortedBalances.map((balance: WalletBalance) => ({
     ...balance,
@@ -123,9 +123,9 @@ Issue:
 Using index as the key in .map() can lead to issues in React when items in the list change order or are updated. React relies on unique and stable keys to optimize rendering.
 
 Original Code:
-tsx
-Sao chép
-Chỉnh sửa
+ 
+ 
+ 
 {formattedBalances.map((balance: FormattedWalletBalance, index: number) => (
   <WalletRow key={index} ... />
 ))}
@@ -133,9 +133,9 @@ Solution:
 Use a more unique identifier, such as balance.currency, as the key. This ensures stability and correctness when rendering items.
 
 Fixed Code:
-tsx
-Sao chép
-Chỉnh sửa
+ 
+ 
+ 
 {formattedBalances.map((balance: FormattedWalletBalance) => (
   <WalletRow key={balance.currency}  // Fix: Use `currency` as the key instead of `index`
     amount={balance.amount}
@@ -158,9 +158,9 @@ Solution:
 Type prices appropriately to ensure it contains the expected structure.
 
 Fixed Code:
-tsx
-Sao chép
-Chỉnh sửa
+ 
+ 
+ 
 interface Prices {
   [currency: string]: number;  // Type `prices` to be an object with string keys and number values
 }
